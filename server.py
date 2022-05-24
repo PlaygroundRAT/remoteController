@@ -1,3 +1,4 @@
+import numpy as np
 from socketio import Server, WSGIApp
 import socket
 import struct
@@ -34,32 +35,27 @@ def getTargetList(sid):
 def remoteReq(sid, data):
   sio.emit('remote start', room=data['target'])
 
-  s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+  sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 
-  s.bind(('',8001))
-  s.listen(10)
-
-  conn,addr=s.accept()
-
-  data = b""
-  payload_size = struct.calcsize(">L")
+  sock.bind(('',8001))
+  s = [b'\xff' * 46080 for x in range(20)]
   while True:
-    while len(data) < payload_size:
-      data += conn.recv(4096)
-    # receive image row data form client socket
-    packed_msg_size = data[:payload_size]
-    data = data[payload_size:]
-    msg_size = struct.unpack(">L", packed_msg_size)[0]
-    while len(data) < msg_size:
-        data += conn.recv(4096)
-    frame_data = data[:msg_size]
-    data = data[msg_size:]
-    # unpack image using pickle 
-    frame=pickle.loads(frame_data, fix_imports=True, encoding="bytes")
-    frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+    picture = b''
 
-    cv2.imshow('server',frame)
-    cv2.waitKey(1)
+    data, addr = sock.recvfrom(46081)
+    s[data[0]] = data[1:46081]
+
+    if data[0] == 19:
+      for i in range(20):
+        picture += s[i]
+
+      frame = np.fromstring(picture, dtype=np.uint8)
+      frame = frame.reshape(480, 640, 3)
+      cv2.imshow("frame", frame)
+
+      if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.destroyAllWindows()
+        break
 
 @sio.on('stop remote')
 def stopStream(sid, data):
