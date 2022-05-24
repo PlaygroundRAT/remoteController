@@ -42,24 +42,20 @@ def remoteStart():
   global isRemotting
   isRemotting = True
 
-  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  s.connect(('localhost', 8001))
+  s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  s.setsockopt(socket.SOL_SOCKET,socket.SO_SNDBUF,1000000)
+  server_ip = "localhost"
+  server_port = 8001
 
-  cam.set(3, 320)
-  cam.set(4, 240)
-
-  encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
-
-  while isRemotting:
-    ret, frame = cam.read()
-    result, frame = cv2.imencode('.jpg', frame, encode_param)
-    # frame을 String 형태로 변환
-    data = np.array(frame)
-    stringData = data.tostring()
- 
-    #서버에 데이터 전송
-    #(str(len(stringData))).encode().ljust(16)
-    s.sendall((str(len(stringData))).encode().ljust(16) + stringData)
+  cap = cv2.VideoCapture(-1)
+  while True:
+    ret,photo = cap.read()
+    cv2.imshow('streaming',photo)
+    ret,buffer = cv2.imencode(".jpg",photo,[int(cv2.IMWRITE_JPEG_QUALITY),30])
+    x_as_bytes = pickle.dumps(buffer)
+    s.sendto((x_as_bytes),(server_ip,server_port))
+    if cv2.waitKey(10)==13:
+      break
   # while isRemotting:
   #   screen = pyautogui.screenshot()
   #   src = np.array(screen)
