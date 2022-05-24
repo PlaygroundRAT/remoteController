@@ -15,7 +15,7 @@ sio = socketio.Client()
 
 isRemotting = False
 
-cap = cv2.VideoCapture(0)
+cam = cv2.VideoCapture(0)
 
 @sio.event
 def connect():
@@ -42,19 +42,24 @@ def remoteStart():
   global isRemotting
   isRemotting = True
 
-  sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  s.connect(('localhost', 8001))
 
-  while True:
-    ret, frame = cap.read()
-    d = frame.flatten()
-    s = d.tostring()
+  cam.set(3, 320)
+  cam.set(4, 240)
 
-    for i in range(20):
-      sock.sendto(s[i*46080:(i+1)*46080], ('localhost', 8001))
+  encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
-      if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
+  while isRemotting:
+    ret, frame = cam.read()
+    result, frame = cv2.imencode('.jpg', frame, encode_param)
+    # frame을 String 형태로 변환
+    data = np.array(frame)
+    stringData = data.tostring()
+ 
+    #서버에 데이터 전송
+    #(str(len(stringData))).encode().ljust(16)
+    s.sendall((str(len(stringData))).encode().ljust(16) + stringData)
   # while isRemotting:
   #   screen = pyautogui.screenshot()
   #   src = np.array(screen)

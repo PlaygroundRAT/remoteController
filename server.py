@@ -10,6 +10,16 @@ app = WSGIApp(sio)
 
 targets = []
 
+def recvall(sock, count):
+  # 바이트 문자열
+  buf = b''
+  while count:
+    newbuf = sock.recv(count)
+    if not newbuf: return None
+    buf += newbuf
+    count -= len(newbuf)
+  return buf
+
 @sio.event
 def connect(sid, environ, auth):
   print('connect ', sid)
@@ -35,27 +45,21 @@ def getTargetList(sid):
 def remoteReq(sid, data):
   sio.emit('remote start', room=data['target'])
 
-  sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  s.bind(('', 8001))
+  s.listen(10)
 
-  sock.bind(('',8001))
-  s = [b'\xff' * 46080 for x in range(20)]
+  conn, addr = s.accept()
+
   while True:
-    picture = b''
+    length = recvall(conn, 16)
+    stringData = recvall(conn, int(length))
+    data = np.fromstring(stringData, dtype='uint8')
 
-    data, addr = sock.recvfrom(46081)
-    s[data[0]] = data[1:46081]
-
-    if data[0] == 19:
-      for i in range(20):
-        picture += s[i]
-
-      frame = np.fromstring(picture, dtype=np.uint8)
-      frame = frame.reshape(480, 640, 3)
-      cv2.imshow("frame", frame)
-
-      if cv2.waitKey(1) & 0xFF == ord('q'):
-        cv2.destroyAllWindows()
-        break
+    # data를 디코딩한다.
+    frame = cv2.imdecode(data, cv2.IMREAD_COLOR)
+    cv2.imshow('ImageWindow', frame)
+    cv2.waitKey(1)
 
 @sio.on('stop remote')
 def stopStream(sid, data):
