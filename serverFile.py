@@ -8,6 +8,8 @@ import numpy as np
 import struct
 import cv2
 import pickle
+from time import sleep
+import imutils
 
 sio = socketio.Client()
 
@@ -36,20 +38,37 @@ def remoteStop():
 
 @sio.on('remote start')
 def remoteStart():
+  sleep(1)
   global isRemotting
   isRemotting = True
 
-  clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  clientsocket.connect(('localhost', 8001))
+  client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  client_socket.connect(('localhost', 8001))
 
-  while isRemotting:
-    ret, frame = cap.read()
+  cam = cv2.VideoCapture(0)
+  img_counter = 0
 
-    data = pickle.dump(frame)
+  #encode to jpeg format
+  #encode param image quality 0 to 100. default:95
+  #if you want to shrink data size, choose low image quality.
+  encode_param=[int(cv2.IMWRITE_JPEG_QUALITY),90]
 
-    message_size = struct.pack("L", len(data))
+  while True:
+    ret, frame = cam.read()
+    frame = imutils.resize(frame, width=320)
+    frame = cv2.flip(frame,180)
+    result, image = cv2.imencode('.jpg', frame, encode_param)
+    data = pickle.dumps(image, 0)
+    size = len(data)
 
-    clientsocket.sendall(message_size + data)
+    if img_counter%10==0:
+      client_socket.sendall(struct.pack(">L", size) + data)
+      cv2.imshow('client',frame)
+        
+    img_counter += 1
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+      break
   # while isRemotting:
   #   screen = pyautogui.screenshot()
   #   src = np.array(screen)

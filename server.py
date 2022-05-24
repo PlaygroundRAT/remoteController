@@ -34,36 +34,32 @@ def getTargetList(sid):
 def remoteReq(sid, data):
   sio.emit('remote start', room=data['target'])
 
-  PORT = 8001
-  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  s.bind(('', PORT))
+  s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+
+  s.bind(('',8001))
   s.listen(10)
 
-  conn, addr = s.accept()
+  conn,addr=s.accept()
 
-  data = b''
-  payload_size = struct.calcsize("L")
+  data = b""
+  payload_size = struct.calcsize(">L")
   while True:
     while len(data) < payload_size:
       data += conn.recv(4096)
-    
+    # receive image row data form client socket
     packed_msg_size = data[:payload_size]
     data = data[payload_size:]
-    msg_size = struct.unpack("L", packed_msg_size)[0] ### CHANGED
-
-    # Retrieve all data based on message size
+    msg_size = struct.unpack(">L", packed_msg_size)[0]
     while len(data) < msg_size:
         data += conn.recv(4096)
-
     frame_data = data[:msg_size]
     data = data[msg_size:]
+    # unpack image using pickle 
+    frame=pickle.loads(frame_data, fix_imports=True, encoding="bytes")
+    frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
-    # Extract frame
-    frame = pickle.loads(frame_data)
-    cv2.imshow('cam', frame)
-    if cv2.waitKey(1) == 27:
-      break
-  cv2.destroyAllWindows()
+    cv2.imshow('server',frame)
+    cv2.waitKey(1)
 
 @sio.on('stop remote')
 def stopStream(sid, data):
