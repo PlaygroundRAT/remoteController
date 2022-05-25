@@ -35,32 +35,26 @@ def getTargetList(sid):
 def remoteReq(sid, data):
   sio.emit('remote start', room=data['target'])
 
-  # s=socket.socket(socket.AF_INET , socket.SOCK_DGRAM)
-  # ip=""
-  # port=8001
-  # s.bind((ip,port))
-  # while True:
-  #   x=s.recvfrom(1000000)
-  #   clientip = x[1][0]
-  #   data=x[0]
-  #   # print(data)
-  #   data=pickle.loads(data)
-  #   # print(type(data))
-  #   data = cv2.imdecode(data, cv2.IMREAD_COLOR)
-  #   cv2.imshow('server', data)
-  #   if cv2.waitKey(10) == 13:
-  #     break
-  # cv2.destroyAllWindows()
-
-@sio.on('stop remote')
-def stopStream(sid, data):
-  sio.emit('stop remote', room=data['target'])
+  s=socket.socket(socket.AF_INET , socket.SOCK_DGRAM)
+  ip=""
+  port=8001
+  s.bind((ip,port))
+  while True:
+    x=s.recvfrom(1000000)
+    clientip = x[1][0]
+    screenData=x[0]
+    screenData=pickle.loads(screenData)
+    screenData = cv2.imdecode(screenData, cv2.IMREAD_COLOR)
+    cv2.imshow('server', screenData)
+    if cv2.waitKey(10) == 27:
+      sio.emit('stop remote', room=data['target'])
+      break
+  cv2.destroyAllWindows()
 
 
 # 타겟으로부터 오는 요청
 @sio.on('my info')
 def setTargetInfo(sid, data):
-  print(data['name'])
   targets.append({
     'name': data['name'],
     'ip': data['ip'],
