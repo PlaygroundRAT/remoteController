@@ -10,16 +10,6 @@ app = WSGIApp(sio)
 
 targets = []
 
-def recvall(sock, count):
-  # 바이트 문자열
-  buf = b''
-  while count:
-    newbuf = sock.recv(count)
-    if not newbuf: return None
-    buf += newbuf
-    count -= len(newbuf)
-  return buf
-
 @sio.event
 def connect(sid, environ, auth):
   print('connect ', sid)
@@ -45,22 +35,22 @@ def getTargetList(sid):
 def remoteReq(sid, data):
   sio.emit('remote start', room=data['target'])
 
-  s=socket.socket(socket.AF_INET , socket.SOCK_DGRAM)
-  ip=""
-  port=8001
-  s.bind((ip,port))
-  while True:
-    x=s.recvfrom(1000000)
-    clientip = x[1][0]
-    data=x[0]
-    print(data)
-    data=pickle.loads(data)
-    print(type(data))
-    data = cv2.imdecode(data, cv2.IMREAD_COLOR)
-    cv2.imshow('server', data) #to open image
-    if cv2.waitKey(10) == 13:
-      break
-  cv2.destroyAllWindows()
+  # s=socket.socket(socket.AF_INET , socket.SOCK_DGRAM)
+  # ip=""
+  # port=8001
+  # s.bind((ip,port))
+  # while True:
+  #   x=s.recvfrom(1000000)
+  #   clientip = x[1][0]
+  #   data=x[0]
+  #   # print(data)
+  #   data=pickle.loads(data)
+  #   # print(type(data))
+  #   data = cv2.imdecode(data, cv2.IMREAD_COLOR)
+  #   cv2.imshow('server', data)
+  #   if cv2.waitKey(10) == 13:
+  #     break
+  # cv2.destroyAllWindows()
 
 @sio.on('stop remote')
 def stopStream(sid, data):

