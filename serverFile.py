@@ -5,17 +5,22 @@ import socket
 import platform
 import pyautogui
 import numpy as np
-import struct
 import cv2
 import pickle
 from time import sleep
-import imutils
+import ctypes
 
 sio = socketio.Client()
 
 isRemotting = False
 
-# cam = cv2.VideoCapture(0)
+user32 = ctypes.windll.user32
+
+screenWidth = user32.GetSystemMetrics(0)
+screenHeight = user32.GetSystemMetrics(1)
+
+streamWidth = 1000
+streamHeight = 500
 
 @sio.event
 def connect():
@@ -30,6 +35,28 @@ def myInfo():
     'ip': ip,
     'os': "mac" if platform.system() == "Darwin" else platform.system()
   })
+  sio.emit('screen info', {
+    'width': screenWidth,
+    'height': screenHeight,
+    'streamWidth': streamWidth,
+    'streamHeight': streamHeight
+  })
+
+@sio.on('screen info')
+def screenInfo():
+  sio.emit('screen info', {'width': screenWidth, 'height': screenHeight})
+
+@sio.on('L click')
+def LClick(data):
+  pyautogui.click(data['x'], data['y'])
+@sio.on('R click')
+def RClick(data):
+  pyautogui.rightClick(data['x'], data['y'])
+
+@sio.on('key')
+def keyBoard(data):
+  pyautogui.press(data['key'])
+
 
 @sio.on('stop remote')
 def remoteStop():
@@ -50,11 +77,10 @@ def remoteStart():
 
   while isRemotting:
     frame = pyautogui.screenshot()
-    frame = frame.resize((1000, 500))
+    frame = frame.resize((streamWidth, streamHeight))
     frame = np.array(frame)
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    cv2.imshow('result', frame)
-    # cv2.imshow('streaming',photo)
+    # cv2.imshow('result', frame)
     ret,buffer = cv2.imencode(".jpg",frame,[int(cv2.IMWRITE_JPEG_QUALITY),30])
     x_as_bytes = pickle.dumps(buffer)
     s.sendto((x_as_bytes),(server_ip,server_port))
